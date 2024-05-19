@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 from datetime import datetime
 
-date_suffix = datetime.now().strftime("%y%m%d%H%M%S")
+date_suffix = datetime.now().strftime("%Y%m%d%H%M") # e.g. 202105011200
 base_version = '0.0.1'
 
 # Determine the version based on environment variable
