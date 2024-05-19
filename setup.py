@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 from datetime import datetime
 
-date_suffix = datetime.now().strftime("%y%m%d.%H%M%S")
+date_suffix = datetime.now().strftime("%y%m%d%H%M%S")
 base_version = '0.0.1'
 full_version = f"{base_version}.dev{date_suffix}"
 
