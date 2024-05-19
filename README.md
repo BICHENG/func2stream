@@ -8,8 +8,23 @@ Inspired by Gstreamer's pipeline architecture, `func2stream` provides a clean an
 
 `func2stream` is currently in early development and is being actively worked on. While it shows promise, it is not yet recommended for production use. The following areas are being prioritized for improvement:
 
-1. 🛠 Refining the decorator and context management implementations for a more robust user experience.
-2. 🧪 Extensive testing and optimization through real-world application to ensure the library is production-ready.
+- [ ] 🎯 Strive towards a decorator-free solution
+
+  - [x] Implement automatic conversion of SISO functions to Elements and connect them in `Pipeline([fn1, fn2...])`
+
+    *Decorators are aesthetically unpleasing and may not provide a foolproof solution. As other projects have attempted and abandoned.*
+
+  - [ ] Eliminate the need for decorators in MIMO functions
+    - [ ] Introduce implicit Context construction using AST parsing
+    - [ ] Simplify the process for users while maintaining necessary control and flexibility
+
+- [ ] 🧩 Implement implicit Context
+
+  - [ ] Extend the automation to MIMO functions
+    - [ ] Use AST to parse function input and output parameters
+    - [ ] Automatically convert parameters into variable keys
+    - [ ] Enable users to build Context mode by ensuring consistent naming in function parameter lists and return statements
+  - [ ] Simplify the process for users while maintaining necessary control and flexibility
 
 ## Key Features
 
