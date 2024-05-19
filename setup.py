@@ -3,13 +3,18 @@ from setuptools import setup, find_packages
 from datetime import datetime
 
 date_suffix = datetime.now().strftime("%y%m%d%H%M")
-base_version = '0.0.1'
+
+major_version = 0
+minor_version = 0
+patch_version = 0
+base_version = f"{major_version}.{minor_version}.{patch_version}"
+base_version_next = f"{major_version}.{minor_version}.{patch_version+1}"
 
 # Determine the version based on environment variable
 if os.getenv('RELEASE_VERSION'):
     full_version = base_version
 else:
-    full_version = f"{base_version}.dev{date_suffix}"
+    full_version = f"{base_version_next}.dev{date_suffix}"
 
 setup(
     name='func2stream',
