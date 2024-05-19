@@ -19,8 +19,8 @@ __license__ = "MPL2.0"
 import os,time,threading,traceback,queue
 import cv2
 
-from core import DataSource
-from utils import find_gstreamer
+from .core import DataSource
+from .utils import find_gstreamer
 
 class _VideoCapture:
     def __init__(self, uri, cap_options={}, use_umat=False):

@@ -1,5 +1,5 @@
 """
-func2stream.py
+core.py
 
 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.
 
