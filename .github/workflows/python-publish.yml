@@ -1,4 +1,4 @@
-name: Upload Python Package
+name: Build and Publish Python Package
 
 on:
   release:
@@ -7,20 +7,12 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-
 jobs:
-  build:
-
+  build-and-publish:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Determine Build Type
-      id: build_type
-      run: echo "::set-output name=release::${{ github.event_name == 'release' }}"
 
     - name: Set up Python
       uses: actions/setup-python@v3
@@ -32,12 +24,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install build
 
+    - name: Determine version type
+      id: version_type
+      run: |
+        if [ "${{ github.event_name }}" == "release" ]; then
+          echo "RELEASE_VERSION=true" >> $GITHUB_ENV
+        fi
+
     - name: Build package
-      env:
-        RELEASE_VERSION: ${{ steps.build_type.outputs.release == 'true' && 'true' || 'false' }}
       run: python -m build
 
     - name: Publish package
+      if: always() && (
+          github.event_name == 'release' ||
+          github.ref == 'refs/heads/main'
+        )
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
