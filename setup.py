@@ -4,7 +4,12 @@ from datetime import datetime
 
 date_suffix = datetime.now().strftime("%y%m%d%H%M%S")
 base_version = '0.0.1'
-full_version = f"{base_version}.dev{date_suffix}"
+
+# Determine the version based on environment variable
+if os.getenv('RELEASE_VERSION'):
+    full_version = base_version
+else:
+    full_version = f"{base_version}.dev{date_suffix}"
 
 setup(
     name='func2stream',
