@@ -225,9 +225,9 @@ class Pipeline(Element):
         
     def start(self):
         assert any([
-            self.elements[-1].sink is not None,
-            isinstance(self.elements[-1], DataSource)
-            ]), f"{self.elements[-1].friendly_name}@{self.friendly_name} has no output queue, cannot start"
+            self.elements[0].source is not None,
+            isinstance(self.elements[0], DataSource)
+            ]), f"{self.elements[0].friendly_name}@{self.friendly_name} has no input queue, cannot start"     
         
         if self.elements[-1].sink is None:
             self.elements[-1].sink = _queue(1, leaky=True)
