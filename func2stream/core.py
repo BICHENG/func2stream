@@ -336,6 +336,9 @@ def from_ctx(get=None, ret=None):
         get = []
     if ret is None:
         ret = []    
+    if isinstance(get, str): get = [get]
+    if isinstance(ret, str): ret = [ret]
+    
     def decorator(func):
         @functools.wraps(func)  # 保持原函数的名字和文档字符串
         def wrapper(ctx):          
