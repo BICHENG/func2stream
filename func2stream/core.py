@@ -347,7 +347,10 @@ def from_ctx(get=None, ret=None):
             missing_keys = [k for k in get if k not in ctx]
             assert not missing_keys, f"{func.__name__} requires keys: {missing_keys} that are not in the context, please check the output of the upstream."
 
-            if len(get): result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
+            # if len(get): result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
+            if len(get):
+                unpacked_args = [ctx[g] for g in get]
+                result = func(*unpacked_args)
             else: result = func()
             
             if not ret: return ctx
