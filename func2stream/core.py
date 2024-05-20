@@ -364,6 +364,80 @@ def from_ctx(get=None, ret=None):
         return wrapper
     return decorator
 
+import ast
+import inspect
+import functools
+
+def get_input_output_names(function):
+    func_code = inspect.getsource(function)
+    tree = ast.parse(func_code)
+    func_def = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)][0]
+    
+    inputs = [arg.arg for arg in func_def.args.args]
+
+    def parse_expr(expr):
+        if isinstance(expr, ast.Name):
+            return [expr.id]
+        elif isinstance(expr, ast.BinOp):
+            return parse_expr(expr.left) + parse_expr(expr.right)
+        elif isinstance(expr, ast.Attribute):
+            return [expr.attr]
+        elif isinstance(expr, ast.Call):
+            return parse_expr(expr.func) if isinstance(expr.func, ast.Attribute) else []
+        elif isinstance(expr, ast.Subscript):
+            return parse_expr(expr.value)
+        return []
+
+    output_names = []
+    for node in func_def.body:
+        if isinstance(node, ast.Return) and node.value is not None:
+            output_names += parse_expr(node.value)
+
+    output_names = list(set(output_names))
+    return inputs, output_names
+
+def from_ctx_auto(get=None, ret=None):
+    def decorator(func):
+        if get is None or ret is None:
+            inputs, outputs = get_input_output_names(func)
+            if get is None:
+                get = inputs
+                print(f"Auto-detected inputs for {func.__name__}: {get}")
+            if ret is None:
+                ret = outputs
+                print(f"Auto-detected outputs for {func.__name__}: {ret}")
+    
+        if isinstance(get, str): get = [get]
+        if isinstance(ret, str): ret = [ret]
+
+        @functools.wraps(func)  # 保持原函数的名字和文档字符串
+        def wrapper(ctx):          
+            assert isinstance(ctx, dict), f"{func.__name__} expects a dictionary type context, but received a {type(ctx).__name__}, please check the output of the upstream."
+            
+            missing_keys = [k for k in get if k not in ctx]
+            assert not missing_keys, f"{func.__name__} requires keys: {missing_keys} that are not in the context, please check the output of the upstream."
+
+            if len(get): 
+                result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
+            else: 
+                result = func()
+            
+            if not ret: return ctx
+            if not isinstance(result, tuple): result = (result,)
+            
+            assert len(ret) == len(result), f"The number of results returned by {func.__name__}: {len(result)} does not match the number of keys set ({ret}), please check the return value of the function."
+                        
+            for key, value in zip(ret, result): 
+                ctx[key] = value
+             
+            return ctx
+        wrapper.fn = func
+        wrapper.get = get
+        wrapper.ret = ret
+        return wrapper
+    return decorator
+
+
 def build_ctx(key,constants={}):
     def ctx_fn(x):
         d = {key: x}
