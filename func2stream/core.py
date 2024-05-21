@@ -58,6 +58,16 @@ class Element:
             param.kind in [inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD],
             param.default == inspect.Parameter.empty,
             param.name not in kwargs])]
+        if hasattr(fn, "__wrapped__"):
+            missing_params=[]
+            
+            
+        # print(f"Building {friendly_name} with {len(fn_params)} parameters：{fn_params}")
+        # print(f"Provided parameters：{kwargs}")
+        # print(f"Missing parameters：{missing_params}")
+        # print(f"fn.__wrapped__：{hasattr(fn, '__wrapped__')}")
+        
+            
         extra_kwargs = set(kwargs.keys()) - set(fn_params)
         
         assert params, f"{friendly_name}: The processing function needs at least one positional parameter, e.g. def {fn.__name__}(item, ...)"
@@ -199,7 +209,7 @@ class Pipeline(Element):
                 if isinstance(elm, tuple) and len(elm) == 2 and callable(elm[0]) and isinstance(elm[1], dict):
                     self.elements[i] = Element(elm[0].__name__, elm[0], elm[1])                    
         # 针对elements中每对相邻元素, 创建连接队列
-        print(f"Building\t┌{self.friendly_name} with {len(self.elements)} elements：┐")
+        print(f"Building┌{self.friendly_name} with {len(self.elements)} elements：┐")
         
         for i in range(len(self.elements) - 1):
             self.elements[i]._link_to(self.elements[i + 1])
@@ -399,8 +409,9 @@ def get_input_output_names(function):
     output_names = list(set(output_names))
     return inputs, output_names
 
-def from_ctx_auto(get=None, ret=None):
+def from_ctx2(get=None, ret=None):
     def decorator(func):
+        nonlocal get, ret
         if get is None or ret is None:
             inputs, outputs = get_input_output_names(func)
             if get is None:
@@ -420,18 +431,18 @@ def from_ctx_auto(get=None, ret=None):
             missing_keys = [k for k in get if k not in ctx]
             assert not missing_keys, f"{func.__name__} requires keys: {missing_keys} that are not in the context, please check the output of the upstream."
 
-            if len(get): 
-                result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
-            else: 
-                result = func()
+            # if len(get): result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
+            if len(get):
+                unpacked_args = [ctx[g] for g in get]
+                result = func(*unpacked_args)
+            else: result = func()
             
             if not ret: return ctx
             if not isinstance(result, tuple): result = (result,)
             
             assert len(ret) == len(result), f"The number of results returned by {func.__name__}: {len(result)} does not match the number of keys set ({ret}), please check the return value of the function."
                         
-            for key, value in zip(ret, result): 
-                ctx[key] = value
+            for key, value in zip(ret, result): ctx[key] = value
              
             return ctx
         wrapper.fn = func
