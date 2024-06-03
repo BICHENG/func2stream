@@ -1,5 +1,6 @@
 import os
-from setuptools import setup, find_packages, Command
+from setuptools import setup, find_packages
+from setuptools.command.install import install as _install
 from datetime import datetime
 
 # 检查是否安装了 OpenCV
@@ -34,18 +35,10 @@ if os.getenv('RELEASE_VERSION'):
 else:
     full_version = f"{base_version_next}.dev{date_suffix}"
 
-class PostInstallCommand(Command):
+class PostInstallCommand(_install):
     """Post-installation for installation mode."""
-    description = "Run post-installation tasks"
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
     def run(self):
+        _install.run(self)
         print("\n" + "="*50)
         print("🎉 \033[1mInstallation complete! Thank you for installing func2stream.\033[0m 🎉")
         print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
