@@ -1,5 +1,6 @@
 import os
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 from datetime import datetime
 
 date_suffix = datetime.now().strftime("%y%m%d%H%M")
@@ -16,6 +17,41 @@ if os.getenv('RELEASE_VERSION'):
 else:
     full_version = f"{base_version_next}.dev{date_suffix}"
 
+class CustomInstallCommand(install):
+    """Customized setuptools install command to check for OpenCV installation."""
+    def run(self):
+        install.run(self)
+        self.display_post_install_message()
+
+    def display_post_install_message(self):
+        print("\n" + "="*50)
+        print("🎉 \033[1mInstallation complete! Thank you for installing func2stream.\033[0m 🎉")
+        print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
+
+        self.check_opencv_installed()
+
+        print("\033[96m🌟 For more information and support, please visit our GitHub repository:\033[0m")
+        print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
+        print("="*50 + "\n")
+
+    def check_opencv_installed(self):
+        try:
+            import cv2
+            print("✅ \033[1mOpenCV is already installed.\033[0m")
+            if 'contrib' in cv2.getBuildInformation():
+                print("   ✔️ Installed version: \033[1mopencv-contrib-python\033[0m\n")
+            else:
+                print("   ✔️ Installed version: \033[1mopencv-python\033[0m\n")
+        except ImportError:
+            print("\n\033[93m🔔 Note: OpenCV is not currently installed.\033[0m")
+            print("\033[93mTo fully utilize all the features of func2stream, please consider installing one of the following packages:\033[0m")
+            print("\n\033[92m  👉 pip install opencv-python\033[0m")
+            print("\033[93m    or\033[0m")
+            print("\033[92m  👉 pip install opencv-contrib-python\033[0m")
+            print("\nFor more information, please visit:")
+            print("\033[94mhttps://pypi.org/project/opencv-python/\033[0m")
+            print("\033[94mhttps://pypi.org/project/opencv-contrib-python/\033[0m\n")
+
 setup(
     name='func2stream',
     version=full_version,
@@ -26,7 +62,6 @@ setup(
     url='https://github.com/BICHENG/func2stream',
     packages=find_packages(),
     install_requires=[
-        'opencv-python',
         'numpy',
     ],
     classifiers=[
@@ -38,4 +73,7 @@ setup(
     ],
     python_requires='>=3.6',
     license='MPL-2.0',
+    cmdclass={
+        'install': CustomInstallCommand,
+    },
 )
