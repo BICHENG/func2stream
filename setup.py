@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 from datetime import datetime
 
+
 date_suffix = datetime.now().strftime("%y%m%d%H%M")
 
 major_version = 0
@@ -11,7 +12,6 @@ patch_version = 0
 base_version = f"{major_version}.{minor_version}.{patch_version}"
 base_version_next = f"{major_version}.{minor_version}.{patch_version+1}"
 
-# Determine the version based on environment variable
 if os.getenv('RELEASE_VERSION'):
     full_version = base_version
 else:
@@ -20,6 +20,7 @@ else:
 class CustomInstallCommand(install):
     """Customized setuptools install command to check for OpenCV installation."""
     def run(self):
+        print("\nDebug: CustomInstallCommand.run() called\n")  # Debug line
         install.run(self)
         self.display_post_install_message()
 
