@@ -89,7 +89,7 @@ setup(
     python_requires='>=3.6',
     license='MPL-2.0',
     cmdclass={
-        'install': PostInstallCommand,
+        # 'install': PostInstallCommand,
         'build_py': CustomBuildCommand,
     }
 )
