@@ -1,33 +1,8 @@
 import os
-import atexit
 from setuptools import setup, find_packages
 from datetime import datetime
 
-
-date_suffix = datetime.now().strftime("%y%m%d%H%M")
-
-major_version = 0
-minor_version = 0
-patch_version = 0
-base_version = f"{major_version}.{minor_version}.{patch_version}"
-base_version_next = f"{major_version}.{minor_version}.{patch_version+1}"
-
-if os.getenv('RELEASE_VERSION'):
-    full_version = base_version
-else:
-    full_version = f"{base_version_next}.dev{date_suffix}"
-
-def display_post_install_message():
-    print("\n" + "="*50)
-    print("🎉 \033[1mInstallation complete! Thank you for installing func2stream.\033[0m 🎉")
-    print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
-
-    check_opencv_installed()
-
-    print("\033[96m🌟 For more information and support, please visit our GitHub repository:\033[0m")
-    print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
-    print("="*50 + "\n")
-
+# 检查是否安装了 OpenCV
 def check_opencv_installed():
     try:
         import cv2
@@ -46,8 +21,18 @@ def check_opencv_installed():
         print("\033[94mhttps://pypi.org/project/opencv-python/\033[0m")
         print("\033[94mhttps://pypi.org/project/opencv-contrib-python/\033[0m\n")
 
-# Register the post-install message to be displayed
-atexit.register(display_post_install_message)
+date_suffix = datetime.now().strftime("%y%m%d%H%M")
+
+major_version = 0
+minor_version = 0
+patch_version = 0
+base_version = f"{major_version}.{minor_version}.{patch_version}"
+base_version_next = f"{major_version}.{minor_version}.{patch_version+1}"
+
+if os.getenv('RELEASE_VERSION'):
+    full_version = base_version
+else:
+    full_version = f"{base_version_next}.dev{date_suffix}"
 
 setup(
     name='func2stream',
@@ -69,5 +54,16 @@ setup(
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.6',
-    license='MPL-2.0',
+    license='MPL-2.0'
 )
+
+print("\n" + "="*50)
+print("🎉 \033[1mInstallation complete! Thank you for installing func2stream.\033[0m 🎉")
+print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
+
+# 显示 OpenCV 检查结果
+check_opencv_installed()
+
+print("\033[96m🌟 For more information and support, please visit our GitHub repository:\033[0m")
+print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
+print("="*50 + "\n")
