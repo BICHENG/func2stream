@@ -1,6 +1,5 @@
 import os
 from setuptools import setup, find_packages, Command
-from setuptools.command.build_py import build_py as build
 from datetime import datetime
 
 # 检查是否安装了 OpenCV
@@ -56,17 +55,6 @@ class PostInstallCommand(Command):
         print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
         print("="*50 + "\n")
 
-class CustomBuildCommand(build):
-    """Custom build command to display a message after build."""
-    def run(self):
-        build.run(self)
-        print("\n" + "="*50)
-        print("🔧 \033[1mBuild complete! Thank you for building func2stream.\033[0m 🔧")
-        print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
-        print("\033[96m🌟 For more information and support, please visit our GitHub repository:\033[0m")
-        print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
-        print("="*50 + "\n")
-
 setup(
     name='func2stream',
     version=full_version,
@@ -89,7 +77,6 @@ setup(
     python_requires='>=3.6',
     license='MPL-2.0',
     cmdclass={
-        # 'install': PostInstallCommand,
-        'build_py': CustomBuildCommand,
+        'install': PostInstallCommand,
     }
 )
