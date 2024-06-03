@@ -76,7 +76,7 @@ setup(
     ],
     python_requires='>=3.6',
     license='MPL-2.0',
-    cmdclass={
-        'install': PostInstallCommand,
-    }
+    # cmdclass={
+    #     'install': PostInstallCommand,
+    # }
 )
