@@ -20,10 +20,10 @@ import os,time,threading,traceback,queue
 import cv2
 
 from .core import DataSource
-from .utils import find_gstreamer
+from .utils import find_gstreamer, init_gstreamer_hwaccel_env
 
 class _VideoCapture:
-    def __init__(self, uri, cap_options={}, use_umat=False):
+    def __init__(self, uri, cap_options={}, use_umat=False, gst_hwaccel_vendor=""):
         self.uri = uri
         self.cap_options = cap_options if len(cap_options) > 0 else self.get_capture_params(uri)
         self._swap = queue.Queue(1)
@@ -31,7 +31,11 @@ class _VideoCapture:
         self.thread = threading.Thread(target=self._worker, name="VideoCapture", daemon=True)
         self.thread.start()
         self.use_umat = use_umat
-    
+        
+        if gst_hwaccel_vendor:
+            init_gstreamer_hwaccel_env(gst_hwaccel_vendor)
+            print(f"NOTE: Gstreamer will only use in rtsp/rtmp mode, and will try to use HW acceleration for {gst_hwaccel_vendor}")
+                
     def get_capture_params(self, video_uri):
         import sys
         """
@@ -73,8 +77,6 @@ class _VideoCapture:
                 return [video_uri, cv2.CAP_V4L]
 
         elif mode in ["rtsp", "rtmp"]:
-            os.environ["GST_PLUGIN_FEATURE_RANK"] = "vaapih264dec:1024,vaapih265dec:1024,nvh264sldec:1024,nvh265sldec:1024,nvh264dec:1024,nvh265dec:1024" # HW acceleration for Intel, Moore Threads and NVIDIA
-            
             pipeline_base = {
                 "rtsp": f"rtspsrc location={video_uri} latency=50 ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false",
                 "rtmp": f"rtmpsrc location={video_uri} ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
