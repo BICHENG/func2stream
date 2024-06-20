@@ -73,6 +73,8 @@ class _VideoCapture:
                 return [video_uri, cv2.CAP_V4L]
 
         elif mode in ["rtsp", "rtmp"]:
+            os.environ["GST_PLUGIN_FEATURE_RANK"] = "vaapih264dec:1024,vaapih265dec:1024,nvh264sldec:1024,nvh265sldec:1024,nvh264dec:1024,nvh265dec:1024" # HW acceleration for Intel, Moore Threads and NVIDIA
+            
             pipeline_base = {
                 "rtsp": f"rtspsrc location={video_uri} latency=50 ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false",
                 "rtmp": f"rtmpsrc location={video_uri} ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
