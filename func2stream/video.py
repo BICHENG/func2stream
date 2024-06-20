@@ -14,7 +14,9 @@ For Usage, please refer to https://github.com/BICHENG/func2stream/samples or REA
 __author__ = "BI CHENG"
 __version__ = "0.0.0"
 __license__ = "MPL2.0"
+uri_formatter = "rtsp://localhost:8554/dash/{}"
 
+uri = [uri_formatter.format(i) for i in range(1, 6)]
 
 import os,time,threading,traceback,queue
 import cv2
