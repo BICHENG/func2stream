@@ -12,7 +12,7 @@ For Usage, please refer to https://github.com/BICHENG/func2stream/samples or REA
 """
 
 __author__ = "BI CHENG"
-__version__ = "0.0.0"
+__version__ = "0.1.0"
 __license__ = "MPL2.0"
 
 
@@ -20,6 +20,9 @@ import os, time, threading, inspect, traceback, queue
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, wait
 import numpy as np
+
+
+from basicnconst import *
 
 class _queue:
     def __init__(self,depth,leaky=False):
@@ -45,8 +48,8 @@ class Element:
         if fn is None:
             fn = lambda x: x
             kwargs = {}
-        assert callable(fn), f"[{friendly_name}] 元素无法创建, 函数 {fn.__name__} 不是可调用的"
-        assert isinstance(kwargs, dict), f"[{friendly_name}] 元素无法创建, 参数 {kwargs} 不是字典类型"
+        assertl(callable(fn), ELEMENT_FN_NOT_CALLABLE.format(friendly_name, fn.__name__))
+        assertl(isinstance(kwargs, dict), ELEMENT_KWARGS_NOT_DICT.format(friendly_name, kwargs))
         
         sig = inspect.signature(fn)
         params = list(sig.parameters.values())
@@ -58,10 +61,10 @@ class Element:
             param.name not in kwargs])]
         extra_kwargs = set(kwargs.keys()) - set(fn_params)
         
-        assert params, f"{friendly_name}: 处理函数需要至少一个位置参数, 例如: def {fn.__name__}(item, ...)"
-        assert not params[0].default != inspect.Parameter.empty, f"{friendly_name}: 第一个位置参数 {params[0].name} 不能有默认值"
-        assert not missing_params, f"{friendly_name}: 缺少{len(missing_params)}个必需参数：{missing_params}，有效参数有：{fn_params}"
-        assert not extra_kwargs, f"{friendly_name}: 提供了{len(extra_kwargs)}个多余参数：{extra_kwargs}"
+        assertl(params, ELEMENT_PARAMS_REQUIRED.format(friendly_name, fn.__name__))
+        assertl(not params[0].default != inspect.Parameter.empty, ELEMENT_FIRST_PARAM_NO_DEFAULT.format(friendly_name, params[0].name))
+        assertl(not missing_params, ELEMENT_MISSING_PARAMS.format(friendly_name, len(missing_params), missing_params, fn_params))
+        assertl(not extra_kwargs, ELEMENT_EXTRA_KWARGS.format(friendly_name, len(extra_kwargs), extra_kwargs))
         
         
         self.friendly_name = friendly_name
@@ -90,7 +93,7 @@ class Element:
     
     def _worker(self):        
         while not self.stop_flag.is_set():
-            print(f"已启动 {self.friendly_name}")
+            logger.info(ELEMENT_STARTED.format(self.friendly_name))
             try:
                 while not self.stop_flag.is_set():
                     if self.source.empty():
@@ -105,14 +108,17 @@ class Element:
 
             except Exception as e:
                 traceback_info = '\t'.join(traceback.format_exception(None, e, e.__traceback__))
-                print(f"{self.friendly_name} 元素发生异常：",
-                    f"\t{e} 位于 {self.fn.__name__}, 参数：{self.kwargs}",
-                    f"\ttraceback: {traceback_info}")
+                logger.info(ELEMENT_ERROR_OCCURRED.format(
+                    self.friendly_name, # Element Name
+                    e,                  # Exception
+                    self.fn.__name__,   # Function Name
+                    self.kwargs,        # Function Arguments
+                    traceback_info))    # Traceback
                 time.sleep(1)
-        print(f"{self.friendly_name} 已停止")
+        logger.info(ELEMENT_STOPPED.format(self.friendly_name))
         
     def _link_to(self, other,depth=1):
-        assert isinstance(other, Element), f"{other} 不是 Element 类的实例"
+        assertl(isinstance(other, Element), ELEMENT_OTHER_NOT_INSTANCE.format(other))
         if all([self.sink is None, other.source is None]): self.sink = _queue(depth, leaky=False); other.set_source(self.sink)
         if all([self.sink is None, other.source is not None]): self.set_sink(other.source)
         if all([self.sink is not None, other.source is None]): other.set_source(self.sink)
@@ -120,14 +126,14 @@ class Element:
     
     def __call__(self, item):
         # 首先, 需要确保有source和sink
-        assert self.thread is not None, f"{self.friendly_name} 元素没有启动, 无法处理元素"
+        assertl(self.thread is not None, ELEMENT_THREAD_NOT_STARTED.format(self.friendly_name))
         self.source.put(item)
         return self.sink.get()
     
     def start(self):
-        assert self.source is not None, f"{self.friendly_name} 元素没有设置输入队列, 无法启动"
-        assert self.sink is not None, f"{self.friendly_name} 元素没有设置输出队列, 无法启动"
-        assert self.thread is None, f"{self.friendly_name} 元素已经启动, 请勿重复启动"
+        assertl(self.source is not None, ELEMENT_NO_SOURCE_QUEUE.format(self.friendly_name))
+        assertl(self.sink is not None, ELEMENT_NO_SINK_QUEUE.format(self.friendly_name))
+        assertl(self.thread is None, ELEMENT_ALREADY_STARTED.format(self.friendly_name))
         self.thread = threading.Thread(target=self._worker, name=self.friendly_name, daemon=True)
         self.thread.start()
         return self
@@ -141,18 +147,19 @@ class Element:
         return np.mean(self.exec_times) if len(self.exec_times) > 0 else 0
     
     def exec_time_summary(self,print_summary=True):
-        # 最近执行的平均时间、最大时间、最小时间、top 5% 和 bottom 5%
+        # execution time of the element(average, max, min, top 5%, bottom 5%)
         exec_times = np.array(self.exec_times)
         t_avg, t_max, t_min, t_95, t_5 = np.mean(exec_times)*1000, np.max(exec_times)*1000, np.min(exec_times)*1000, np.percentile(exec_times, 95)*1000, np.percentile(exec_times, 5)*1000
         if print_summary:
-            print("".join([
-                f"{self.friendly_name} 执行时间统计：",
-                f"\t平均处理时间：{t_avg:.2f} ms",
-                f"\t最大处理时间：{t_max:.2f} ms",
-                f"\t最小处理时间：{t_min:.2f} ms",
-                f"\ttop 5% 处理时间：{t_95:.2f} ms",
-                f"\tbottom 5% 处理时间：{t_5:.2f} ms"
-                ]))
+            logger.info("".join([
+                ELEMENT_EXEC_TIME_NAME.format(self.friendly_name),
+                ELEMENT_EXEC_TIME_AVG.format(t_avg),
+                ELEMENT_EXEC_TIME_MAX.format(t_max),
+                ELEMENT_EXEC_TIME_MIN.format(t_min),
+                ELEMENT_EXEC_TIME_TOP_5.format(t_95),
+                ELEMENT_EXEC_TIME_BTN_5.format(t_5)
+            ]))
+
         return t_avg, t_max, t_min, t_95, t_5
 
 class DataSource(Element):
@@ -165,15 +172,18 @@ class DataSource(Element):
     def _worker(self):
         while not self.stop_flag.is_set():    
             try:
-                print(f"已启动 {self.friendly_name} ")
+                logger.info(ELEMENT_STARTED.format(self.friendly_name))
                 while not self.stop_flag.is_set(): self.sink.put(self.reader_call())
             except Exception as e:
                 traceback_info = '\t'.join(traceback.format_exception(None, e, e.__traceback__))
-                print(f"{self.friendly_name} 源发生异常：",
-                    f"\t{e} 位于 {self.reader_call.__name__}, 参数：{self.kwargs}",
-                    f"\ttraceback: {traceback_info}")
+                logger.info(DSOURCE_ERROR_OCCURRED.format(
+                    self.friendly_name,         # Element Name
+                    e,                          # Exception
+                    self.reader_call.__name__,  # Function Name
+                    self.kwargs,                # Function Arguments
+                    traceback_info))            # Traceback
                 time.sleep(1)
-            print(f"{self.friendly_name} 已停止")
+            logger.info(ELEMENT_STOPPED.format(self.friendly_name))
     def start(self):
         self.source = _queue(1, leaky=False)
         return super().start()
@@ -181,47 +191,47 @@ class DataSource(Element):
 class Pipeline(Element):
     def __init__(self, elements: list, friendly_name="Pipeline",depth=1):
         super().__init__(friendly_name, fn=None, kwargs={}, source=None, sink=None)        
-        assert len(elements) > 1, f"Pipeline 至少需要2个元素, 目前只有 {len(elements)} 个"        
+        assertl(len(elements) > 1, PIPELINE_TOO_FEW_ELEMENTS.format(len(elements)))
         self.elements = elements
-        # 针对elements中每个item, 检查是否是Element的实例, 并尝试转换为Element的实例
+        # For each item in elements, check if it is an instance of Element and try to convert it to an instance of Element
         for i, elm in enumerate(self.elements):
             if not isinstance(elm, Element):
                 if callable(elm):
                     self.elements[i] = Element(elm.__name__, elm)
                 if isinstance(elm, tuple) and len(elm) == 2 and callable(elm[0]) and isinstance(elm[1], dict):
                     self.elements[i] = Element(elm[0].__name__, elm[0], elm[1])                    
-        # 针对elements中每对相邻元素, 创建连接队列
-        print(f"构建\t┌{self.friendly_name} 的连接, 共 {len(self.elements)} 个元素：┐")
+        # For each pair of adjacent elements in elements, create a connection queue
+        logger.info(ELEMENT_CONNECTION_BGN.format(self.friendly_name, len(self.elements)))
         for i in range(len(self.elements) - 1):
-            self.elements[i]._link_to(self.elements[i + 1],depth=depth)
-            print(f"\t│连接 {self.elements[i].friendly_name} -{depth}--> {self.elements[i + 1].friendly_name} 已建立 [{i+1}/{len(self.elements)-1}]")
-        print("\t└───────────────────")
+            self.elements[i]._link_to(self.elements[i + 1], depth=depth)
+            logger.info(ELEMENT_LINK_ESTABLISH.format(self.elements[i].friendly_name, depth, self.elements[i + 1].friendly_name, i + 1, len(self.elements) - 1))
+        logger.info(ELEMENT_CONNECTION_END)
+
         for i, elm in enumerate(self.elements):
             elm.friendly_name = f"{self.friendly_name}/{elm.friendly_name} [{i+1}/{len(self.elements)}]"
             if i > 0 and i < len(self.elements) - 1: elm.start()
          
-        # Pipeline 自身的源头（source）和汇点（sink）委托给了首个和末尾元素以实现与外部世界的接口, 实际上是与 Pipeline 中的这两个特定元素的交互。
+        # The source and sink of the pipeline itself are delegated to the first and last elements to interact with the outside world,
+        # which is actually the interaction with these two specific elements in the pipeline.
         self.source = self.elements[0].source
         self.sink = self.elements[-1].sink
         
+        # Don't use if you dk what you are doing
         def _set_source(source):
-            print(f"设置 {self.friendly_name} 的输入队列")
+            logger.info(SET_SRC_QUEUE.format(self.friendly_name))
             self.elements[0].source = source;return self
         def _set_sink(sink):
-            print(f"设置 {self.friendly_name} 的输出队列")
+            logger.info(SET_DST_QUEUE.format(self.friendly_name))
             self.elements[-1].sink = sink;return self
         
         self.set_source=_set_source
         self.set_sink=_set_sink
         
     def start(self):
-        assert any([
-            self.elements[0].source is not None,
-            isinstance(self.elements[0], DataSource)
-            ]), f"{self.elements[0].friendly_name}@{self.friendly_name} 没有设置输入队列, 无法启动"        
+        assertl(any([self.elements[0].source is not None, isinstance(self.elements[0], DataSource)]), PIPELINE_NO_SOURCE.format(self.elements[0].friendly_name, self.friendly_name))
         if self.elements[-1].sink is None:
             self.elements[-1].sink = _queue(1, leaky=True)
-            print(f"SINK {self.elements[-1].friendly_name} 将是一个自动丢弃数据的队列")
+            logger.info(ELEMENT_SINK_IS_LEAKY.format(self.elements[-1].friendly_name))
         for i in [0, -1]: self.elements[i].start()
         self.source = self.elements[0].source
         self.sink = self.elements[-1].sink
@@ -235,38 +245,38 @@ class Pipeline(Element):
         self.elements[-1].sink = _queue(1, leaky=False)
         return self
     
-    # def set_input(self,q:Queue):
-    #     self.element[0].source = q
-    #     return self
-    
-    def exec_time_summary(self,print_summary=True):
+    def exec_time_summary(self, print_summary=True):
         exec_times = [element.exec_time_summary(print_summary=False) for element in self.elements]
-        msg = [f"{self.friendly_name} 共 {len(self.elements)} 个元素, 执行时间统计：",]
+        msg = [EXEC_TIME_SUMMARY_HEADER.format(self.friendly_name, len(self.elements))]
         for i, (t_avg, t_max, t_min, t_95, t_5) in enumerate(exec_times):
-            msg.append(f"\t{self.elements[i].friendly_name}：")
-            msg.append(f"\t\t平均处理时间：{t_avg:.2f} ms")
-            msg.append(f"\t\t最大处理时间：{t_max:.2f} ms")
-            msg.append(f"\t\t最小处理时间：{t_min:.2f} ms")
-            msg.append(f"\t\ttop 5% 处理时间：{t_95:.2f} ms")
-            msg.append(f"\t\tbottom 5% 处理时间：{t_5:.2f} ms")
-        if print_summary: print("\n".join(msg))
+            msg.append(ELEMENT_EXEC_TIME_NAME.format(self.elements[i].friendly_name))
+            msg.append(ELEMENT_EXEC_TIME_AVG.format(t_avg))
+            msg.append(ELEMENT_EXEC_TIME_MAX.format(t_max))
+            msg.append(ELEMENT_EXEC_TIME_MIN.format(t_min))
+            msg.append(ELEMENT_EXEC_TIME_TOP_5.format(t_95))
+            msg.append(ELEMENT_EXEC_TIME_BTN_5.format(t_5))
+        if print_summary:
+            logger.info("\n".join(msg))
         return exec_times
-    
-    def exec_time_summary_lite(self,print_summary=True):
+
+    def exec_time_summary_lite(self, print_summary=True):
         exec_times = [element.exec_time_summary(print_summary=False) for element in self.elements]
-        msg = [f"{self.friendly_name} 共 {len(self.elements)} 个元素, 执行时间统计：",]
+        msg = [EXEC_TIME_SUMMARY_HEADER.format(self.friendly_name, len(self.elements))]
         for i, (t_avg, t_max, t_min, t_95, t_5) in enumerate(exec_times):
-            msg.append(f"\t{self.elements[i].friendly_name}：top 5% 处理时间：{t_95:.2f} ms")
-            
+            msg.append(ELEMENT_EXEC_TIME_NAME.format(self.elements[i].friendly_name) + ELEMENT_EXEC_TIME_TOP_5.format(t_95))
+        
         most_time_consuming = np.argmax([t[0] for t in exec_times])
-        msg.append(f"\n\t最耗时的元素是 {self.elements[most_time_consuming].friendly_name}：")
-        msg.append(f"\t\平均处理时间：{exec_times[most_time_consuming][0]:.2f} ms")
-        msg.append(f"\t\最大处理时间：{exec_times[most_time_consuming][1]:.2f} ms")
-        msg.append(f"\t\最小处理时间：{exec_times[most_time_consuming][2]:.2f} ms")
-        msg.append(f"\ttop 5% 处理时间：{exec_times[most_time_consuming][3]:.2f} ms")
-        msg.append(f"\tbottom 5% 处理时间：{exec_times[most_time_consuming][4]:.2f} ms")
-        if print_summary: print("\n".join(msg))
+        msg.append(MOST_TIME_CONSUMING_HEADER.format(self.elements[most_time_consuming].friendly_name))
+        msg.append(ELEMENT_EXEC_TIME_AVG.format(exec_times[most_time_consuming][0]))
+        msg.append(ELEMENT_EXEC_TIME_MAX.format(exec_times[most_time_consuming][1]))
+        msg.append(ELEMENT_EXEC_TIME_MIN.format(exec_times[most_time_consuming][2]))
+        msg.append(ELEMENT_EXEC_TIME_TOP_5.format(exec_times[most_time_consuming][3]))
+        msg.append(ELEMENT_EXEC_TIME_BTN_5.format(exec_times[most_time_consuming][4]))
+        
+        if print_summary:
+            logger.info("\n".join(msg))
         return exec_times
+
     
 class MapReduce(Element):
     def __init__(self, fn_with_kwargs, friendly_name="", source=None, sink=None,nocopy=True):
@@ -287,52 +297,48 @@ class MapReduce(Element):
         
         self.fn = _fn_readonly if nocopy else _fn_copied_items
         fn_names = [fn.__name__ for fn in self.fn_list]
-        self.friendly_name = f"{friendly_name if friendly_name else 'MapReduce'}[{'ReadOnly' if nocopy else 'Copied'}]━┓"
+        self.friendly_name = f"{friendly_name if friendly_name else 'MapReduce'}[{'ReadOnly' if nocopy else 'Copy'}]━┓"
         for fn_name, kwargs in zip(fn_names, self.kwargs_list):
             self.friendly_name += f"\n\t┣━{fn_name}({kwargs})"
         self.friendly_name += f"\n\t┗━T{len(self.fn_list)}"
     
-
     def ctx_mode(self,get=None, ret=None):
-        self.get = get or [[] for _ in self.fn_list]  # 默认为空列表的列表
-        self.ret = ret or [[] for _ in self.fn_list]  # 默认为空列表的列表
+        self.get = get or [[] for _ in self.fn_list]  # List of lists by default
+        self.ret = ret or [[] for _ in self.fn_list]  # List of lists by default
         def _fn_ctx(item):
             futures = []
             for index, fn in enumerate(self.fn_list):
-                # 根据get列表解构item
+                # Item will be deconstructed according to the get list
                 args = [item[key] for key in self.get[index]] if self.get[index] else [item]
-                # 提交任务时，将解构的参数作为fn的输入
+                # Submit tasks with deconstructed parameters as input to fn
                 future = self.exec.submit(fn, *args)
                 futures.append(future)
 
-            # 等待所有任务完成
+            # Wait for all tasks to complete
             wait(futures)
 
-            # 处理返回结果，根据ret列表回填到item
+            # Process the return result and fill it back to item according to the ret list
             for index, future in enumerate(futures):
                 result = future.result()
                 if self.ret[index]:
                     for key, value in zip(self.ret[index], result if isinstance(result, tuple) else [result]):
                         item[key] = value
-
-            return item
+            return item # All results are stored in item
 
         self.fn = _fn_ctx
         return self
 
 import functools
 def from_ctx(get=None, ret=None):
-    if get is None:
-        get = []
-    if ret is None:
-        ret = []    
+    if get is None: get = []
+    if ret is None: ret = []    
     def decorator(func):
-        @functools.wraps(func)  # 保持原函数的名字和文档字符串
+        @functools.wraps(func)  # keep the name and docstring of the original function
         def wrapper(ctx):          
-            assert isinstance(ctx, dict), f"{func.__name__}需要接收一个字典类型的上下文，但是接收到了 {type(ctx).__name__} 类型，请检查上游的输出。"
+            assertl(isinstance(ctx, dict), FUNC_CTX_NOT_DICT.format(func.__name__, type(ctx).__name__))
 
             missing_keys = [k for k in get if k not in ctx]
-            assert not missing_keys, f"{func.__name__}需要获取的键: {missing_keys} 不在上下文中，请检查上游的输出。"
+            assertl(not missing_keys, FUNC_MISSING_KEYS.format(func.__name__, missing_keys))
             
             if len(get): result = func([ctx[g] for g in get] if len(get) > 1 else ctx[get[0]])
             else: result = func()
@@ -340,7 +346,7 @@ def from_ctx(get=None, ret=None):
             if not ret: return ctx
             if not isinstance(result, tuple): result = (result,)
             
-            assert len(ret) == len(result), f"{func.__name__}返回的结果数量: {len(result)} 与设置的键({ret})数量: {len(ret)} 不匹配，请检查函数的返回值。"
+            assertl(len(ret) == len(result), FUNC_RETURN_MISMATCH.format(func.__name__, len(result), ret, len(ret)))
             for key, value in zip(ret, result): ctx[key] = value
              
             return ctx
@@ -369,5 +375,6 @@ class ContextContainer(dict):
 def init_ctx(func):
     def wrapper(*args, **kwargs):
         local_vars = func(*args, **kwargs)
+        assertl(isinstance(local_vars, dict), CTX_LOCALVARS_NOT_DICT)
         return ContextContainer(local_vars)
     return wrapper

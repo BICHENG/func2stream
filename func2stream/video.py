@@ -18,7 +18,7 @@ uri_formatter = "rtsp://localhost:8554/dash/{}"
 
 uri = [uri_formatter.format(i) for i in range(1, 6)]
 
-import os,time,threading,traceback,queue
+import os,sys,time,threading,traceback,queue
 import cv2
 
 from .core import DataSource
@@ -38,15 +38,7 @@ class _VideoCapture:
             init_gstreamer_hwaccel_env(gst_hwaccel_vendor)
             print(f"NOTE: Gstreamer will only use in rtsp/rtmp mode, and will try to use HW acceleration for {gst_hwaccel_vendor}")
                 
-    def get_capture_params(self, video_uri):
-        import sys
-        """
-        Automatically recognize the mode based on the input video_uri and return the parameter list required for video capture.
-        
-        :param video_uri: Identifier of the resource, such as the path of the video file or the URL of the network stream
-        :return: Parameter list or configuration for initializing cv2.VideoCapture
-        """     
-        
+    def get_capture_params(self, video_uri):        
         mode = ""
         if sys.platform == "win32" and video_uri.isdigit(): 
             mode = "uvc"
