@@ -9,7 +9,7 @@ License: MPL2.0
 Created: 2024/5/1
 
 For Usage, please refer to https://github.com/BICHENG/func2stream/samples or README.md
-""" 
+"""
 
 __author__ = "BI CHENG"
 __version__ = "0.0.0"
