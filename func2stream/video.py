@@ -16,8 +16,6 @@ __version__ = "0.0.0"
 __license__ = "MPL2.0"
 uri_formatter = "rtsp://localhost:8554/dash/{}"
 
-uri = [uri_formatter.format(i) for i in range(1, 6)]
-
 import os,sys,time,threading,traceback,queue
 import cv2
 
