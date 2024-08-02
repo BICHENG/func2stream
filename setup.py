@@ -65,7 +65,6 @@ setup(
     url='https://github.com/BICHENG/func2stream',
     packages=find_packages(),
     install_requires=[
-        'numpy',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

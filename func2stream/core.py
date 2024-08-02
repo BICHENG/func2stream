@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 import numpy as np
 
 
-from basicnconst import *
+from .basicnconst import *
 
 class _queue:
     def __init__(self,depth,leaky=False):
