@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages, Command
 from datetime import datetime
 
-# 检查是否安装了 OpenCV
+# 
 def check_opencv_installed():
     try:
         import cv2
@@ -49,7 +49,6 @@ class PostInstallCommand(Command):
         print("\n" + "="*50)
         print("🎉 \033[1mInstallation complete! Thank you for installing func2stream.\033[0m 🎉")
         print("🔄 Effortlessly transform functions into asynchronous elements for building high-performance pipelines.\n")
-        # 显示 OpenCV 检查结果
         check_opencv_installed()
         print("\033[96m🌟 For more information and support, please visit our GitHub repository:\033[0m")
         print("\033[94mhttps://github.com/BICHENG/func2stream\033[0m")
