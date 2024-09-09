@@ -23,7 +23,7 @@ setup(
     name='func2stream',
     version=full_version,
     description='Effortlessly transform functions into asynchronous elements for building high-performance pipelines',
-    long_description=open('README.md').read_text(encoding='UTF-8')
+    long_description=open('README.md').read_text(encoding='UTF-8'),
     long_description_content_type='text/markdown',
     author='BI CHENG',
     url='https://github.com/BICHENG/func2stream',
