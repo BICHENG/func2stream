@@ -1,8 +1,11 @@
 import os
 from setuptools import setup, find_packages, Command
 from datetime import datetime
+from pathlib import Path
 
 # 
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 date_suffix = datetime.now().strftime("%y%m%d%H%M")
 
@@ -23,7 +26,7 @@ setup(
     name='func2stream',
     version=full_version,
     description='Effortlessly transform functions into asynchronous elements for building high-performance pipelines',
-    long_description=open('README.md').read_text(encoding='UTF-8'),
+    long_description=long_description,
     long_description_content_type='text/markdown',
     author='BI CHENG',
     url='https://github.com/BICHENG/func2stream',
