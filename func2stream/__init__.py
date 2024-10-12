@@ -1,4 +1,4 @@
-from .core import Pipeline, Element, MapReduce, build_ctx, from_ctx
+from .core import Pipeline, Element, MapReduce, build_ctx, from_ctx, init_ctx
 from .video import VideoSource
 
 __all__ = [
@@ -7,5 +7,6 @@ __all__ = [
     'Element',
     'MapReduce',
     'build_ctx',
-    'from_ctx'
+    'from_ctx',
+    'init_ctx'
 ]

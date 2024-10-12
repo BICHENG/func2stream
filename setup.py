@@ -32,6 +32,7 @@ setup(
     url='https://github.com/BICHENG/func2stream',
     packages=find_packages(),
     install_requires=[
+        'loguru',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
