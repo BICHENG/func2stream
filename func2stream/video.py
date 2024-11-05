@@ -22,7 +22,7 @@ from .core import DataSource
 from .utils import find_gstreamer, init_gstreamer_hwaccel_env
 
 class _VideoCapture:
-    def __init__(self, uri, cap_options={}, use_umat=False, gst_hwaccel_vendor=""):
+    def __init__(self, uri, cap_options={}, use_umat=False, gst_hwaccel_vendor="", reopen = True):
         self.uri = uri
         self.cap_options = cap_options if len(cap_options) > 0 else self.get_capture_params(uri)
         self._swap = queue.Queue(1)
@@ -31,6 +31,7 @@ class _VideoCapture:
         self.thread.start()
         self.use_umat = use_umat
         self.cap = None
+        self.reopen = reopen
         
         if gst_hwaccel_vendor:
             init_gstreamer_hwaccel_env(gst_hwaccel_vendor)
@@ -72,7 +73,7 @@ class _VideoCapture:
 
         elif mode in ["rtsp", "rtmp"]:
             pipeline_base = {
-                "rtsp": f"rtspsrc location={video_uri} latency=50 ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false",
+                "rtsp": f"rtspsrc location={video_uri} latency=0 ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false",
                 "rtmp": f"rtmpsrc location={video_uri} ! queue ! parsebin ! decodebin ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
             }
             gst_found, gst_version = find_gstreamer()
@@ -83,15 +84,16 @@ class _VideoCapture:
             return [pipeline_base[mode], cv2.CAP_GSTREAMER]
 
         elif mode == "video":
-            appsink_config = "appsink max-buffers=1 drop=false"
-            pipeline = f"filesrc location={video_uri} ! decodebin ! videoconvert ! {appsink_config} sync=false"
+            # appsink_config = "appsink max-buffers=1 drop=false"
+            # pipeline = f"filesrc location={video_uri} ! decodebin ! videoconvert ! {appsink_config} sync=false"
 
             return [
                 video_uri,cv2.CAP_FFMPEG,
-                [cv2.CAP_PROP_HW_ACCELERATION, cv2.VIDEO_ACCELERATION_ANY]
+                # [cv2.CAP_PROP_HW_ACCELERATION, cv2.VIDEO_ACCELERATION_ANY]
                 ]
         
     def _worker(self):
+        frame_cnt = 0
         while not self.stop_flag.is_set():
             try:
                 if isinstance(self.cap_options, dict):
@@ -115,8 +117,13 @@ class _VideoCapture:
                     self._swap.put(buf)
                     good = self.cap.grab()
                     good, buf = self.cap.retrieve(buf)
+                    frame_cnt += 1
                 self.cap.release()
             except Exception as e:
+                if not self.reopen: 
+                    for i in range(frame_cnt*10): 
+                        self._swap.put(None)
+                        
                 traceback_info = '\t'.join(traceback.format_exception(None, e, e.__traceback__))
                 print(f"VideoCapture@{self.uri} will try to reopen, reason：{e}, traceback: {traceback_info}")
                 time.sleep(1)
@@ -187,8 +194,8 @@ class UVC_VideoCapture(_VideoCapture):
         print(f"Camera {self.device_id} closed")
 
 class VideoSource(DataSource):
-    def __init__(self, uri, cap_options={}, use_umat=False,friendly_name=""):
-        self.video_capture = _VideoCapture(uri, cap_options, use_umat)
+    def __init__(self, uri, cap_options={}, use_umat=False,friendly_name="",reopen=True):
+        self.video_capture = _VideoCapture(uri, cap_options, use_umat, reopen=reopen)
         super().__init__(reader_call=self.video_capture.read,
                          friendly_name=uri if friendly_name == "" else friendly_name)
 
