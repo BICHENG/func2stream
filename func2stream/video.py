@@ -120,12 +120,14 @@ class _VideoCapture:
                     frame_cnt += 1
                 self.cap.release()
             except Exception as e:
+                traceback_info = '\t'.join(traceback.format_exception(None, e, e.__traceback__))
                 if not self.reopen: 
                     for i in range(frame_cnt*10): 
                         self._swap.put(None)
-                        
-                traceback_info = '\t'.join(traceback.format_exception(None, e, e.__traceback__))
+                        print(f"{self.uri} closed, frame_cnt: {frame_cnt}")
+                
                 print(f"VideoCapture@{self.uri} will try to reopen, reason：{e}, traceback: {traceback_info}")
+                
                 time.sleep(1)
         print(f"{self.uri} closed")
     def read(self):
