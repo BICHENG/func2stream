@@ -12,7 +12,7 @@ For Usage, please refer to https://github.com/BICHENG/func2stream/samples or REA
 """
 
 __author__ = "BI CHENG"
-__version__ = "0.0.0"
+__version__ = "1.0.0-pre"
 __license__ = "MPL2.0"
 
 
@@ -37,6 +37,7 @@ def find_gstreamer():
 
 
 def init_gstreamer_hwaccel_env(vendor):
+    """vendor: intel/mt/nvidia"""
     import os
     os.environ["GST_PLUGIN_FEATURE_RANK"] = "vaapih264dec:1024,vaapih265dec:1024,nvh264sldec:1024,nvh265sldec:1024,nvh264dec:1024,nvh265dec:1024" # HW acceleration for Intel, Moore Threads and NVIDIA
     if not vendor in ["intel","mt","nvidia"]:

@@ -1,0 +1,27 @@
+# func2stream MANIFEST.in
+# 
+# PyPI 发布时的文件包含/排除规则
+
+# 包含
+include LICENSE
+include README.md
+include pyproject.toml
+
+# 排除开发文档
+prune docs/internal
+
+# 排除测试和示例
+prune samples
+prune tests
+
+# 排除开发配置
+prune .github
+prune .windsurf
+prune .cursor
+exclude .windsurfrules
+exclude .gitattributes
+
+# 排除构建产物
+prune *.egg-info
+global-exclude __pycache__
+global-exclude *.py[cod]

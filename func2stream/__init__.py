@@ -1,12 +1,11 @@
-from .core import Pipeline, Element, MapReduce, build_ctx, from_ctx, init_ctx
+from .core import Pipeline, Element, init_ctx
 from .video import VideoSource
+from .implicit_ctx import auto_ctx
 
 __all__ = [
     'Pipeline',
     'VideoSource',
     'Element',
-    'MapReduce',
-    'build_ctx',
-    'from_ctx',
-    'init_ctx'
+    'init_ctx',
+    'auto_ctx',
 ]

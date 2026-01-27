@@ -1,0 +1,19 @@
+# func2stream Git Attributes
+# 
+# 发布时排除开发文档（git archive / GitHub release）
+
+# 开发文档 - 发布时排除
+docs/internal/** export-ignore
+
+# 测试和示例 - 发布时排除
+samples/** export-ignore
+tests/** export-ignore
+
+# 开发配置 - 发布时排除
+.github/** export-ignore
+.windsurf/** export-ignore
+.windsurfrules export-ignore
+
+# 构建产物 - 发布时排除
+*.egg-info/** export-ignore
+__pycache__/** export-ignore
