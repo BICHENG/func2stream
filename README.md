@@ -219,6 +219,42 @@ while (min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 10
 
 ---
 
+## 用 `gpu_model()` 处理 GPU 资源
+
+`gpu_model()` 可以避免 GPU 模型跨线程执行时的性能问题。
+
+```python
+from func2stream import Pipeline, init_ctx, gpu_model
+from func2stream.core import DataSource
+
+@init_ctx
+def create_detector(threshold=0.5):
+    # 主线程变量
+    frame_count = 0
+    
+    # GPU 模型 - 延迟到工作线程创建
+    model = gpu_model(lambda: TRTModel(device='cuda'))
+    
+    def detect(frame) -> "boxes":
+        nonlocal frame_count
+        frame_count += 1
+        return [b for b in model(frame) if b.conf > threshold]
+    
+    def get_count():
+        return frame_count
+    
+    return locals()
+
+ctx = create_detector(threshold=0.7)
+Pipeline([DataSource(camera.read), ctx.detect, display]).start()
+```
+
+`gpu_model()` 接受一个无参 lambda，在工作线程首次访问时执行。调用方式与原模型一致。
+
+> 示例：[samples/gpu_model_trt.py](samples/gpu_model_trt.py)
+
+---
+
 ## 常见误区
 
 ### 误区 1：流水线函数不再能嵌套调用

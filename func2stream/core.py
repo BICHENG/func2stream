@@ -359,6 +359,90 @@ class Pipeline(Element):
             logger.info("\n".join(msg))
         return exec_times
 
+class _ThreadLocalProxy:
+    """线程局部代理：延迟初始化 GPU 资源到工作线程"""
+    __slots__ = ('_factory', '_local')
+    
+    def __init__(self, factory):
+        object.__setattr__(self, '_factory', factory)
+        object.__setattr__(self, '_local', threading.local())
+    
+    def _get(self):
+        local = object.__getattribute__(self, '_local')
+        if not hasattr(local, 'obj'):
+            factory = object.__getattribute__(self, '_factory')
+            local.obj = factory()
+        return local.obj
+    
+    def __call__(self, *args, **kwargs):
+        return self._get()(*args, **kwargs)
+    
+    def __getattr__(self, name):
+        return getattr(self._get(), name)
+    
+    def __setattr__(self, name, value):
+        setattr(self._get(), name, value)
+
+
+def gpu_model(factory):
+    """
+    GPU 模型延迟初始化包装器 - 解决 TensorRT 等 GPU 资源的线程亲和性问题
+    
+    TensorRT 等 GPU 资源必须在执行线程中创建，否则性能下降 10-400x。
+    此函数将模型创建延迟到工作线程首次访问时。
+    
+    用法:
+        @init_ctx
+        def create_ctx():
+            threshold = 0.5                                    # 主线程变量
+            model = gpu_model(lambda: TRTModel(device='cuda')) # 工作线程创建
+            
+            def detect(frame) -> "boxes":
+                return model(frame)  # 使用方式不变
+            
+            return locals()
+    
+    Args:
+        factory: 无参 lambda 表达式，返回 GPU 模型实例
+                 正确: gpu_model(lambda: TRTModel(device='cuda'))
+                 错误: gpu_model(TRTModel) 或 gpu_model(model_instance)
+    
+    Returns:
+        线程局部代理对象，首次在每个线程访问时调用 factory 创建实例
+    """
+    import types
+    
+    if not callable(factory):
+        raise TypeError(
+            f"gpu_model() 参数必须是 lambda 表达式\n"
+            f"正确: gpu_model(lambda: TRTModel(device='cuda'))\n"
+            f"错误: 传入了 {type(factory).__name__}"
+        )
+    
+    if isinstance(factory, type):
+        raise TypeError(
+            f"gpu_model() 参数必须是 lambda 表达式，不能直接传类\n"
+            f"正确: gpu_model(lambda: {factory.__name__}(...))\n"
+            f"错误: gpu_model({factory.__name__})"
+        )
+    
+    if not isinstance(factory, types.FunctionType):
+        raise TypeError(
+            f"gpu_model() 参数必须是 lambda 表达式，不能传实例\n"
+            f"正确: gpu_model(lambda: {type(factory).__name__}(...))\n"
+            f"错误: gpu_model({type(factory).__name__}(...))  # 已经创建了实例"
+        )
+    
+    if factory.__code__.co_argcount > 0:
+        raise TypeError(
+            f"gpu_model() 参数必须是无参 lambda\n"
+            f"正确: gpu_model(lambda: Model(...))\n"
+            f"错误: 传入的函数需要 {factory.__code__.co_argcount} 个参数"
+        )
+    
+    return _ThreadLocalProxy(factory)
+
+
 class ContextContainer(dict):
     def __init__(self, local_vars, auto_wrap_functions=False):
         super().__init__()

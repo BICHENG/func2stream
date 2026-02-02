@@ -28,6 +28,8 @@ Not magic — I just noticed nobody annotates with string literals. So I took ad
 
 ## Why func2stream?
 
+Purpose: Minimal intrusion on serial code, let stage N processing overlap with stage N+1 processing in time.
+
 Real-time inference. Video streams. You've got a bunch of functions to chain together, but calling them sequentially? RIP throughput.
 
 Try to parallelize too early? Congrats, now you're juggling threads, queues, and shared state. Your code becomes a ~~masterpiece~~ spaghetti monster.
@@ -214,6 +216,42 @@ while min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 100
     time.sleep(1)
 
 ```
+
+---
+
+## `gpu_model()`: GPU Resources
+
+`gpu_model()` avoids performance issues when GPU models execute across threads.
+
+```python
+from func2stream import Pipeline, init_ctx, gpu_model
+from func2stream.core import DataSource
+
+@init_ctx
+def create_detector(threshold=0.5):
+    # Main thread variables
+    frame_count = 0
+    
+    # GPU model - deferred to worker thread
+    model = gpu_model(lambda: TRTModel(device='cuda'))
+    
+    def detect(frame) -> "boxes":
+        nonlocal frame_count
+        frame_count += 1
+        return [b for b in model(frame) if b.conf > threshold]
+    
+    def get_count():
+        return frame_count
+    
+    return locals()
+
+ctx = create_detector(threshold=0.7)
+Pipeline([DataSource(camera.read), ctx.detect, display]).start()
+```
+
+`gpu_model()` takes a zero-argument lambda. Execution is deferred to first access in the worker thread. Usage is identical to the original model.
+
+> Example: [samples/gpu_model_trt.py](samples/gpu_model_trt.py)
 
 ---
 
