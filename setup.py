@@ -15,8 +15,11 @@ patch_version = 0
 base_version = f"{major_version}.{minor_version}.{patch_version}"
 base_version_next = f"{major_version}.{minor_version}.{patch_version+1}"
 
-if os.getenv('RELEASE_VERSION'):
-    full_version = base_version
+release_version = os.getenv('RELEASE_VERSION')
+if release_version:
+    full_version = release_version[1:] if release_version.startswith("v") else release_version
+    if full_version.lower() == "true":
+        raise RuntimeError("RELEASE_VERSION must be an explicit version, for example 0.0.1")
 else:
     full_version = f"{base_version_next}.dev{date_suffix}"
 

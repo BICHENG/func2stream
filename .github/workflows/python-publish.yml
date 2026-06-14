@@ -10,6 +10,12 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/func2stream
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
@@ -24,22 +30,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install build
 
-    - name: Determine version type
-      id: version_type
-      run: |
-        if [ "${{ github.event_name }}" == "release" ]; then
-          echo "RELEASE_VERSION=true" >> $GITHUB_ENV
-        fi
-
     - name: Build package
-      run: python -m build
+      run: |
+        RELEASE_VERSION="${GITHUB_REF_NAME#v}" python -m build
 
     - name: Publish package
-      if: always() && (
-          github.event_name == 'release' ||
-          github.ref == 'refs/heads/main'
-        )
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      uses: pypa/gh-action-pypi-publish@release/v1
