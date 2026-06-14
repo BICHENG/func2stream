@@ -39,13 +39,15 @@ ENV/
 
 # ===== Testing / POC =====
 poc/
-tests/
 .pytest_cache/
 .tox/
 .coverage
 htmlcov/
 .nox/
 docs/internal
+
+# ===== Local workspace notes =====
+.local-docs/
 
 # ===== Jupyter =====
 .ipynb_checkpoints/

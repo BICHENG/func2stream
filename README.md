@@ -83,8 +83,7 @@ pip install git+https://github.com/bicheng/func2stream.git
 在现有代码的基础上，只需要针对可参与异步流水线的函数做修改，加 `-> "数据名"` 即可。
 
 ```python
-from func2stream import Pipeline
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource
 
 # ─── 工具函数（不进流水线，不加 -> "数据名"）─────────────────
 
@@ -151,8 +150,7 @@ Pipeline([
 ### 例子：多目标追踪器
 
 ```python
-from func2stream import Pipeline, init_ctx
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource, init_ctx
 
 @init_ctx
 def create_tracker(model_path, threshold=0.5):
@@ -186,7 +184,7 @@ def create_tracker(model_path, threshold=0.5):
     return locals()
 
 
-# 创建两个独立的追踪器实例（各自有独立的模型和状态）
+# 同一个工厂，创建两个互相隔离的追踪器
 tracker_front = create_tracker("yolo.pt", threshold=0.7)
 tracker_rear = create_tracker("yolo.pt", threshold=0.5)
 
@@ -210,7 +208,7 @@ p1.start()
 p2.start()
 
 # 查看状态
-while (min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 100):
+while min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 100:
     print(f"front: {tracker_front.get_frame_count()}")
     print(f"rear: {tracker_rear.get_frame_count()}")
     time.sleep(1)
@@ -224,8 +222,7 @@ while (min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 10
 `gpu_model()` 可以避免 GPU 模型跨线程执行时的性能问题。
 
 ```python
-from func2stream import Pipeline, init_ctx, gpu_model
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource, init_ctx, gpu_model
 
 @init_ctx
 def create_detector(threshold=0.5):

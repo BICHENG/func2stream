@@ -1,30 +1,28 @@
 """
 实时美颜程序 Mock 示例
-与 README.md 开头的示例一致
+与 README.md 开头的示例一致。
 """
 import time
+
 import numpy as np
-from func2stream import Pipeline
-from func2stream.core import DataSource
+
+from func2stream import DataSource, Pipeline
 
 
-# ─── Mock 摄像头 ───────────────────────────────────────────────
 class MockCamera:
-    def __init__(self, width=640, height=480):
+    def __init__(self, width=640, height=480, sleep=0.033, seed=None):
         self.width = width
         self.height = height
+        self.sleep = sleep
         self.frame_count = 0
-    
+        self.rng = np.random.default_rng(seed)
+
     def read(self):
         self.frame_count += 1
-        time.sleep(0.033)  # ~30 FPS
-        return np.random.randint(0, 255, (self.height, self.width, 3), dtype=np.uint8)
+        if self.sleep:
+            time.sleep(self.sleep)
+        return self.rng.integers(0, 255, (self.height, self.width, 3), dtype=np.uint8)
 
-
-camera = MockCamera()
-
-
-# ─── 工具函数（不进流水线，不加 -> "数据名"）─────────────────
 
 def normalize(img):
     """归一化图像"""
@@ -33,7 +31,7 @@ def normalize(img):
 
 def get_eye_positions(x, y, w, h):
     """计算眼睛位置"""
-    return [(x + w//3, y + h//3), (x + 2*w//3, y + h//3)]
+    return [(x + w // 3, y + h // 3), (x + 2 * w // 3, y + h // 3)]
 
 
 def apply_brightness(crop, factor=0.9):
@@ -41,17 +39,15 @@ def apply_brightness(crop, factor=0.9):
     return crop * factor + (1 - factor)
 
 
-# ─── 流水线函数（与文档一致）─────────────────────────────────────
-
 def some_preprocess(frame) -> "tensor":
     """预处理：归一化"""
-    return normalize(frame)  # 调用工具函数
+    return normalize(frame)
 
 
 def detect(tensor) -> "face_boxes":
     """人脸检测（mock：返回固定框）"""
     h, w = tensor.shape[:2]
-    return [(w//4, h//4, w//2, h//2)]  # (x, y, w, h)
+    return [(w // 4, h // 4, w // 2, h // 2)]
 
 
 def get_face_crop(tensor, face_boxes) -> ("landmarks", "crops"):
@@ -59,43 +55,38 @@ def get_face_crop(tensor, face_boxes) -> ("landmarks", "crops"):
     crops = []
     landmarks = []
     for (x, y, w, h) in face_boxes:
-        crop = tensor[y:y+h, x:x+w]
-        crops.append(crop)
-        landmarks.append(get_eye_positions(x, y, w, h))  # 调用工具函数
+        crops.append(tensor[y:y + h, x:x + w])
+        landmarks.append(get_eye_positions(x, y, w, h))
     return landmarks, crops
 
 
 def beautify_model(crops) -> "beautified":
-    """美颜模型（mock：简单模糊）"""
-    return [apply_brightness(crop) for crop in crops]  # 调用工具函数
+    """美颜模型（mock：简单亮度调整）"""
+    return [apply_brightness(crop) for crop in crops]
 
 
 def display(frame, landmarks, beautified) -> "displayed":
     """显示结果"""
-    print(f"[display] frame shape: {frame.shape}, "
-          f"landmarks: {len(landmarks)}, beautified: {len(beautified)}")
+    print(
+        f"[display] frame shape: {frame.shape}, "
+        f"landmarks: {len(landmarks)}, beautified: {len(beautified)}"
+    )
     return True
 
 
-# ─── 组装流水线（与文档一致）───────────────────────────────────
-
-pipeline = Pipeline([
-    DataSource(camera.read),
-    some_preprocess,
-    detect,
-    get_face_crop,
-    beautify_model,
-    display,
-])
-
-
 if __name__ == "__main__":
+    camera = MockCamera()
+    pipeline = Pipeline([
+        DataSource(camera.read),
+        some_preprocess,
+        detect,
+        get_face_crop,
+        beautify_model,
+        display,
+    ])
     print("启动美颜流水线...")
     pipeline.start()
-    
-    # 运行 3 秒
     time.sleep(3)
-    
     print(f"\n处理帧数: {camera.frame_count}")
     pipeline.exec_time_summary_lite()
     pipeline.stop()

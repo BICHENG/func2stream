@@ -33,7 +33,17 @@ setup(
     packages=find_packages(),
     install_requires=[
         'loguru',
+        'numpy>=1.19.5,<1.22; python_version < "3.8"',
+        'numpy>=1.21.0; python_version >= "3.8"',
     ],
+    extras_require={
+        'test': [
+            'pytest>=6.2',
+        ],
+        'video': [
+            'opencv-python>=4',
+        ],
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

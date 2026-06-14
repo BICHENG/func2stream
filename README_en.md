@@ -19,20 +19,20 @@ def detect(tensor) -> "boxes":
     return model(tensor)
 ```
 
-**Drop it into a Pipeline, async just works (allegedly):**
+**Drop it into a Pipeline, async works:**
 ```python
 Pipeline([... preprocess, detect, display]).start()
 ```
 
-Not magic — I just noticed nobody annotates with string literals. So I took advantage of that. 🤷‍♂️
+String return annotations become pipeline keys.
 
 ## Why func2stream?
 
 Purpose: Minimal intrusion on serial code, let stage N processing overlap with stage N+1 processing in time.
 
-Real-time inference. Video streams. You've got a bunch of functions to chain together, but calling them sequentially? RIP throughput.
+Real-time inference. Video streams. A chain of ordinary functions can overlap stage by stage.
 
-Try to parallelize too early? Congrats, now you're juggling threads, queues, and shared state. Your code becomes a ~~masterpiece~~ spaghetti monster.
+Parallelizing too early usually spreads threads, queues, and shared state through business code.
 
 ```python
 # e.g., a real-time beauty filter
@@ -83,8 +83,7 @@ pip install git+https://github.com/bicheng/func2stream.git
 Add `-> "data_name"` to functions that go into the pipeline. That's it.
 
 ```python
-from func2stream import Pipeline
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource
 
 # ─── Helper functions (not in pipeline, no annotation) ──────────────
 
@@ -151,8 +150,7 @@ Bundle them with `@init_ctx`.
 ### Example: Multi-Object Tracker
 
 ```python
-from func2stream import Pipeline, init_ctx
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource, init_ctx
 
 @init_ctx
 def create_tracker(model_path, threshold=0.5):
@@ -186,7 +184,7 @@ def create_tracker(model_path, threshold=0.5):
     return locals()
 
 
-# Two independent tracker instances (each with its own model and state)
+# Same factory, two isolated tracker instances
 tracker_front = create_tracker("yolo.pt", threshold=0.7)
 tracker_rear = create_tracker("yolo.pt", threshold=0.5)
 
@@ -224,8 +222,7 @@ while min(tracker_front.get_frame_count(), tracker_rear.get_frame_count()) < 100
 `gpu_model()` avoids performance issues when GPU models execute across threads.
 
 ```python
-from func2stream import Pipeline, init_ctx, gpu_model
-from func2stream.core import DataSource
+from func2stream import Pipeline, DataSource, init_ctx, gpu_model
 
 @init_ctx
 def create_detector(threshold=0.5):
@@ -297,7 +294,7 @@ Pipeline([
 
 ### Gotcha 2: Forgot `-> "data_name"`
 
-One annotation. If you still can't figure it out after this, that's on you.
+Pipeline stages declare their output with one string return annotation.
 
 ```python
 def process(frame):

@@ -4,23 +4,41 @@
 字符串注解才包装，类型注解不包装
 """
 
+import ast
+import __future__
 import inspect
 import functools
-from typing import List, Callable, Any, Optional
+from typing import List
 
-from .basicnconst import assertl, logger
+_ANNOTATIONS_FEATURE = getattr(__future__, "annotations", None)
+_FUTURE_ANNOTATIONS = _ANNOTATIONS_FEATURE.compiler_flag if _ANNOTATIONS_FEATURE else 0
+_BAD_ANNOTATION = object()
+
+
+def _annotation_value(func, annotation):
+    code = getattr(func, "__code__", None)
+    if not (isinstance(annotation, str) and code and code.co_flags & _FUTURE_ANNOTATIONS):
+        return annotation
+    if annotation == "None":
+        return None
+    try:
+        return ast.literal_eval(annotation)
+    except (SyntaxError, ValueError):
+        return _BAD_ANNOTATION
 
 
 def _should_wrap(func) -> bool:
     """字符串返回注解才包装，避免辅助函数被意外包装"""
     try:
         sig = inspect.signature(func)
-        ret_anno = sig.return_annotation
+        ret_anno = _annotation_value(func, sig.return_annotation)
         
-        # 只有字符串注解才包装
+        # 字符串返回注解写 ctx；None 返回注解表示纯副作用阶段。
         if isinstance(ret_anno, str):
             return True
         if isinstance(ret_anno, tuple) and all(isinstance(k, str) for k in ret_anno):
+            return True
+        if ret_anno is None:
             return True
         
         # 无注解或类型注解都不包装
@@ -40,7 +58,7 @@ def _parse_annotation(func) -> tuple:
     for name, param in sig.parameters.items():
         if name in ('self', 'cls'):
             continue
-        anno = param.annotation
+        anno = _annotation_value(func, param.annotation)
         if anno is inspect.Parameter.empty:
             get_keys.append(name)
         elif isinstance(anno, str):
@@ -48,9 +66,11 @@ def _parse_annotation(func) -> tuple:
         else:
             get_keys.append(name)
     
-    ret_anno = sig.return_annotation
+    ret_anno = _annotation_value(func, sig.return_annotation)
     
     if ret_anno is inspect.Signature.empty:
+        ret_keys = []
+    elif ret_anno is None:
         ret_keys = []
     elif isinstance(ret_anno, str):
         ret_keys = [ret_anno]
